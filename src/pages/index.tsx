@@ -53,11 +53,8 @@ const HomePage = () => {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {newMoviesInTheaters.map((movie) => (
-              <Link href={`/movies/${movie.id}`}>
-                <div
-                  key={movie.id}
-                  className="bg-white p-4 rounded-lg shadow-md"
-                >
+              <div key={movie.id} className="bg-white p-4 rounded-lg shadow-md">
+                <Link href={`/movies/${movie.id}`}>
                   <img
                     src={movie.posterUrl}
                     alt={movie.name}
@@ -67,8 +64,8 @@ const HomePage = () => {
                     {movie.name}
                   </h2>
                   <p className="text-gray-600">Rating: {movie.rating}</p>
-                </div>
-              </Link>
+                </Link>
+              </div>
             ))}
           </div>
 
