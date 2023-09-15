@@ -1,7 +1,7 @@
 // src/FrontPage.js
 import React from "react";
-import MenuAppBar from "@/components/appbar";
 import Link from "next/link";
+import Head from "next/head";
 //import { useDispatch, useSelector } from 'react-redux';
 //import { authAction } from '../store';
 
@@ -45,6 +45,13 @@ const HomePage = () => {
 
   return (
     <>
+      <Head>
+        <title>True review</title>
+        <meta
+          name="description"
+          content="The best movie review Dapp out there"
+        />
+      </Head>
       <div className="min-h-screen bg-gray-100 p-4">
         <div className="container mx-auto">
           <h1 className="text-3xl text-gray-800 font-semibold mb-4">

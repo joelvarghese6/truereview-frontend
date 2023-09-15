@@ -1,46 +1,34 @@
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import ResponsiveAppBar from "@/components/appbar";
-import { useMemo } from "react";
-import { clusterApiUrl } from "@solana/web3.js";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import {
-  LedgerWalletAdapter,
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  TorusWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-import {
-  ConnectionProvider,
-  WalletProvider,
-} from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import React, { useMemo } from "react";
+import dynamic from "next/dynamic";
+import { ConnectionProvider } from "@solana/wallet-adapter-react";
+import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
+import ClientWalletProvider from "@/components/contexts/ClientWalletProvider";
+import { NETWORK } from "@/utils/endpoints";
+import "@/styles/App.css";
+import { Toaster } from "react-hot-toast";
 
-require("@solana/wallet-adapter-react-ui/styles.css");
+const ReactUIWalletModalProviderDynamic = dynamic(
+  async () =>
+    (await import("@solana/wallet-adapter-react-ui")).WalletModalProvider,
+  { ssr: false }
+);
 
 export default function App({ Component, pageProps }: AppProps) {
-  const solNetwork = WalletAdapterNetwork.Mainnet;
-  const endpoint = useMemo(() => clusterApiUrl(solNetwork), [solNetwork]);
-  // initialise all the wallets you want to use
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network: solNetwork }),
-      new TorusWalletAdapter(),
-      new LedgerWalletAdapter(),
-    ],
-    [solNetwork]
-  );
+  const wallets = useMemo(() => [new PhantomWalletAdapter(), new SolflareWalletAdapter()], []);
 
   return (
     <>
-      <ConnectionProvider endpoint={endpoint}>
-        <WalletProvider wallets={wallets}>
-          <WalletModalProvider>
-            <ResponsiveAppBar />
-            <Component {...pageProps} />
-          </WalletModalProvider>
-        </WalletProvider>
+      <ConnectionProvider endpoint={NETWORK}>
+        <ClientWalletProvider wallets={wallets}>
+          <ReactUIWalletModalProviderDynamic>
+            <Toaster reverseOrder={true} />
+                <ResponsiveAppBar/>
+                <Component {...pageProps} />
+          </ReactUIWalletModalProviderDynamic>
+        </ClientWalletProvider>
       </ConnectionProvider>
     </>
   );

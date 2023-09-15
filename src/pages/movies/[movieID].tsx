@@ -9,6 +9,9 @@ import {
   DialogTitle,
 } from "@mui/material";
 import { useRouter } from "next/router";
+import { useWallet } from "@solana/wallet-adapter-react";
+import toast, { Toaster } from "react-hot-toast";
+import Head from "next/head";
 
 interface MovieReview {
   id: number;
@@ -27,6 +30,7 @@ interface Movie {
 }
 
 const ReviewPage: React.FC = () => {
+  const { connected } = useWallet();
   // Example movie reviews data
   const [reviews, setReviews] = useState<MovieReview[]>([
     {
@@ -117,6 +121,10 @@ const ReviewPage: React.FC = () => {
   }
 
   function handleOpenDialog() {
+    if (!connected) {
+      toast("Connect you wallet first", { duration: 1800 });
+      return;
+    }
     setOpenDialog(true);
   }
 
@@ -154,8 +162,34 @@ const ReviewPage: React.FC = () => {
     setNewReview({ ...newReview, [name]: value });
   };
 
+  const addNewReview = () => {
+    
+    if (newReview.text.length === 0) {
+      toast("Review field is empty", {duration: 1800})
+      return
+    } 
+    setOpenDialog(false)
+    const movie = {
+      id: Math.floor(Math.random() * 7474),
+      user: "User2",
+      rating: newReview.rating,
+      text: newReview.text,
+      upvotes: 0,
+      downvotes: 0,
+    };
+    setReviews((prevList) => [...prevList, movie]);
+    setNewReview({rating: 1, text: ""})
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
+      <Head>
+        <title>{movie.name}</title>
+        <meta
+          name="description"
+          content="The best movie review Dapp out there"
+        />
+      </Head>
       <div className="container mx-auto">
         <div className="flex items-center space-x-4 mb-4">
           <img
@@ -199,15 +233,16 @@ const ReviewPage: React.FC = () => {
         >
           Add New Review
         </button>
+       
       </div>
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
         aria-labelledby="form-dialog-title"
       >
-        <DialogTitle></DialogTitle>
+        <DialogTitle>Add new review</DialogTitle>
         <DialogContent>
-          <DialogContentText>Add Review</DialogContentText>
+          <DialogContentText>Here you can add your review</DialogContentText>
           <div className="mb-4">
             <label className="block text-gray-700">Rating:</label>
             <input
@@ -216,7 +251,16 @@ const ReviewPage: React.FC = () => {
               min="1"
               max="5"
               value={newReview.rating}
-              onChange={handleReviewChange}
+              onChange={(e) => {
+                if (Number(e.target.value) > 5) {
+                  setNewReview({ ...newReview, rating: 5 });
+                }  else {
+                  setNewReview({
+                    ...newReview,
+                    rating: Number(e.target.value),
+                  });
+                }
+              }}
               className="w-full p-2 border border-gray-300 rounded-md"
             />
           </div>
@@ -225,18 +269,16 @@ const ReviewPage: React.FC = () => {
             <textarea
               name="text"
               value={newReview.text}
-              onChange={handleReviewChange}
+              onChange={(e) =>
+                setNewReview({ ...newReview, text: e.target.value })
+              }
               rows={4}
               className="w-full p-2 border border-gray-300 rounded-md"
             />
           </div>
         </DialogContent>
         <DialogActions>
-          <Button
-            color="secondary"
-            variant="contained"
-            onClick={handleCloseDialog}
-          >
+          <Button color="secondary" variant="contained" onClick={addNewReview}>
             Add review
           </Button>
           <Button
