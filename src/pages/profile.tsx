@@ -26,11 +26,36 @@ const ProfilePage: React.FC = () => {
   });
 
   const router = useRouter();
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
 
   useEffect(() => {
     if (!connected) {
       router.push("/");
+    } else {
+      const pubKey = publicKey?.toString();
+      const url =
+        "https://m0xr4lz01f.execute-api.ap-south-1.amazonaws.com/helius-get-user-data";
+      fetch(url, {
+        method: "POST",
+        body: JSON.stringify({ pubKey }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if(Object.keys(data).length === 0 && data.constructor === Object) {
+            router.push("/signup")
+            return
+          }
+          const item = {
+            name: data.Item.name,
+            nationality: data.Item.nationality,
+            description: data.Item.designation,
+            email: "johndoe@example.com",
+            reviewPoints: 0,
+            totalReviews: data.Item.reviewCount,
+            profilePicture: "path/to/your/profile-picture.jpg",
+          }
+          setUser(item)
+        });
     }
   }, [connected]);
 
@@ -47,8 +72,25 @@ const ProfilePage: React.FC = () => {
   const saveProfileChanges = () => {
     // Implement your logic to save the changes here
     // You can send a request to your backend API
+    const pubKey = publicKey?.toString();
+      const url =
+        "https://m0xr4lz01f.execute-api.ap-south-1.amazonaws.com/helius-update-user-data";
+      const data = {
+        pubKey,
+        name: user.name,
+        designation: user.description,
+        nationality: user.nationality
+      }
+      fetch(url, {
+        method: "POST",
+        body: JSON.stringify({
+          pubKey,
+          name: user.name,
+          designation: user.description,
+          nationality: user.nationality
+        }),
+      })
     setIsEditing(false);
-    console.log(user)
   };
 
   return (
@@ -60,9 +102,7 @@ const ProfilePage: React.FC = () => {
             <input
               className="w-full p-2 mt-4 border border-gray-300 rounded-md text-gray-600"
               value={user.name}
-              onChange={(e) =>
-                setUser({ ...user, name: e.target.value })
-              }
+              onChange={(e) => setUser({ ...user, name: e.target.value })}
               placeholder="Name"
             />
           ) : (
