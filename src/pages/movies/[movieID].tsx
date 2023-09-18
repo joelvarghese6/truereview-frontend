@@ -12,70 +12,77 @@ import { useRouter } from "next/router";
 import { useWallet } from "@solana/wallet-adapter-react";
 import toast, { Toaster } from "react-hot-toast";
 import Head from "next/head";
+import { createTokenAccount, transferTokens, burnTokens } from "@/components/metaplex";
+import * as web3 from "@solana/web3.js";
+import * as token from "@solana/spl-token";
+import returnkey from "@/components/env";
 
 interface MovieReview {
-  id: number;
+  id: string;
   user: string;
   rating: number;
   text: string;
   upvotes: number;
   downvotes: number;
+  pubkey: string;
 }
 
 interface Movie {
-  id: number;
+  id: string;
   name: string;
   rating: number;
   posterUrl: string;
 }
 
 const ReviewPage: React.FC = () => {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
   // Example movie reviews data
   const [reviews, setReviews] = useState<MovieReview[]>([
     {
-      id: 1,
+      id: "one",
       user: "User1",
       rating: 4,
       text: "This movie is amazing!",
       upvotes: 10,
       downvotes: 2,
+      pubkey: "kl",
     },
     {
-      id: 2,
+      id: "two",
       user: "User2",
       rating: 2,
       text: "I didn't like this movie at all.",
       upvotes: 5,
       downvotes: 3,
+      pubkey: "jk",
     },
     // Add more reviews as needed
   ]);
 
   const movies = [
     {
-      id: 1,
+      id: "one",
       name: "Morbius",
       rating: 4.5,
       posterUrl:
         "https://e1.pxfuel.com/desktop-wallpaper/49/663/desktop-wallpaper-new-movie-posters-hollywood-movie-2022.jpg",
     },
     {
-      id: 2,
+      id: "two",
       name: "Fast X",
       rating: 4.2,
       posterUrl:
         "https://filmjabber.com/movie-poster-thumbs/fast-x-movie-poster-7113.jpg",
     },
     {
-      id: 3,
+      id: "three",
       name: "Kraven the Hunter",
       rating: 4.8,
       posterUrl:
         "https://www.joblo.com/wp-content/uploads/2022/05/kraven-the-hunter-poster-400x600.jpg",
     },
     {
-      id: 4,
+      id: "four",
       name: "Bhoot Police",
       rating: 4.0,
       posterUrl:
@@ -84,10 +91,9 @@ const ReviewPage: React.FC = () => {
   ];
 
   const router = useRouter();
-  console.log(router.query.movieID);
   const id = router.query.movieID;
   const [movie, setMovie] = useState<Movie>({
-    id: 4,
+    id: "four",
     name: "Bhoot Police",
     rating: 4.0,
     posterUrl:
@@ -95,20 +101,48 @@ const ReviewPage: React.FC = () => {
   });
 
   useEffect(() => {
-    // Ensure "id" is a number (or parse it)
-    if (typeof id === "string" && !isNaN(Number(id))) {
-      const movieId = Number(id);
-      // Find the movie object in the array based on "id"
-      const foundMovie = movies.find((m) => m.id === movieId);
-      if (foundMovie) {
-        setMovie(foundMovie);
-      }
+    const movieId = id;
+    const foundMovie = movies.find((m) => m.id === movieId);
+    if (foundMovie) {
+      setMovie(foundMovie);
     }
   }, [id]);
 
-  //const movie = {name: "hello", posterUrl: "/njjn"}
+  useEffect(() => {
+    const url =
+      "https://m0xr4lz01f.execute-api.ap-south-1.amazonaws.com/helius-get-reviews";
+    const movieId = id;
+    fetch(url, { method: "POST", body: JSON.stringify({ movieId }) })
+      .then((response) => response.json())
+      .then((data) => {
+        const items = data.Items;
+        const newArray = items.map((e: any) => {
+          return {
+            id: e.SK,
+            user: e.tokenAcc,
+            rating: e.rating,
+            text: e.review,
+            upvotes: e.upvote,
+            downvotes: e.downvote,
+            pubkey: e.userPubKey,
+          }
+        })
+        setReviews(newArray)
+      });
+  },[]);
 
-  console.log(movie);
+  function generateRandomString(length: number) {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let randomString = "";
+  
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      randomString += charset.charAt(randomIndex);
+    }
+  
+    return randomString;
+  }
+
   // Modal state
   const [openDialog, setOpenDialog] = useState(false);
   const [newReview, setNewReview] = useState({
@@ -129,9 +163,51 @@ const ReviewPage: React.FC = () => {
   }
 
   // Function to upvote a review
-  const upvoteReview = (id: number) => {
+  const upvoteReview = async (ids: string) => {
+    if (!connected) {
+      toast("connect your wallet")
+      return
+    }
+    const connection = new web3.Connection(web3.clusterApiUrl("devnet"), {
+      commitment: "confirmed",
+    });
+
+    const mintaddr = "8UB2WSuBdRRRN4QzPPVTNFDph3cVLMPSA1Noe6SbnorC";
+    const mint = new web3.PublicKey(mintaddr);
+    const secret = returnkey();
+    const secretKey = Uint8Array.from(secret);
+    const user = web3.Keypair.fromSecretKey(secretKey);
+
+    const pubKey = new web3.PublicKey(publicKey!.toString());
+
+    const tokenAccount = await createTokenAccount(
+      connection,
+      user,
+      mint,
+      user.publicKey // Associating our address with the token account
+    );
+
+    const receiverTokenAccount = await createTokenAccount(
+      connection,
+      user,
+      mint,
+      pubKey // Associating our address with the token account
+    );
+    await transferTokens(
+      connection,
+      user,
+      tokenAccount.address,
+      receiverTokenAccount.address,
+      user.publicKey,
+      10,
+      mint
+  )
     const updatedReviews = reviews.map((review) => {
-      if (review.id === id) {
+      if (review.id === ids) {
+        const url = "https://m0xr4lz01f.execute-api.ap-south-1.amazonaws.com/helius-upvote-downvote"
+        const movieId = id
+        const userPubKey = publicKey?.toString()
+        fetch(url, {method: "POST", body: JSON.stringify({vote: "up", movieId, userPubKey})})
         return { ...review, upvotes: review.upvotes + 1 };
       }
       return review;
@@ -140,9 +216,37 @@ const ReviewPage: React.FC = () => {
   };
 
   // Function to downvote a review
-  const downvoteReview = (id: number) => {
+  const downvoteReview = async (ids: string) => {
+    if (!connected) {
+      toast("connect your wallet")
+      return
+    }
+    const connection = new web3.Connection(web3.clusterApiUrl("devnet"), {
+      commitment: "confirmed",
+    });
+
+    const mintaddr = "8UB2WSuBdRRRN4QzPPVTNFDph3cVLMPSA1Noe6SbnorC";
+    const mint = new web3.PublicKey(mintaddr);
+    const secret = returnkey();
+    const secretKey = Uint8Array.from(secret);
+    const user = web3.Keypair.fromSecretKey(secretKey);
+
+    const pubKey = new web3.PublicKey(publicKey!.toString());
+
+    const tokenAccount = await createTokenAccount(
+      connection,
+      user,
+      mint,
+      pubKey // Associating our address with the token account
+    );
+
+    await burnTokens(connection, user, tokenAccount.address, mint, user, 5)
     const updatedReviews = reviews.map((review) => {
-      if (review.id === id) {
+      if (review.id === ids) {
+        const url = "https://m0xr4lz01f.execute-api.ap-south-1.amazonaws.com/helius-upvote-downvote"
+        const movieId = id
+        const userPubKey = publicKey?.toString()
+        fetch(url, {method: "POST", body: JSON.stringify({vote: "down", movieId, userPubKey})})
         return { ...review, downvotes: review.downvotes + 1 };
       }
       return review;
@@ -162,23 +266,38 @@ const ReviewPage: React.FC = () => {
     setNewReview({ ...newReview, [name]: value });
   };
 
-  const addNewReview = () => {
-    
+  const addNewReview = async (korr: Movie) => {
+    const date = new Date();
+    const url =
+      "https://m0xr4lz01f.execute-api.ap-south-1.amazonaws.com/helius-add-new-review";
+    await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({
+        userPubKey: publicKey?.toString(),
+        rating: newReview.rating,
+        review: newReview.text,
+        timestamp: date.getTime(),
+        movieId: korr?.id,
+        pubkey: publicKey?.toString(),
+      }),
+    });
+
     if (newReview.text.length === 0) {
-      toast("Review field is empty", {duration: 1800})
-      return
-    } 
-    setOpenDialog(false)
+      toast("Review field is empty", { duration: 1800 });
+      return;
+    }
+    setOpenDialog(false);
     const movie = {
-      id: Math.floor(Math.random() * 7474),
+      id: generateRandomString(10),
       user: "User2",
       rating: newReview.rating,
       text: newReview.text,
       upvotes: 0,
       downvotes: 0,
+      pubkey: "hj",
     };
     setReviews((prevList) => [...prevList, movie]);
-    setNewReview({rating: 1, text: ""})
+    setNewReview({ rating: 1, text: "" });
   };
 
   return (
@@ -233,7 +352,6 @@ const ReviewPage: React.FC = () => {
         >
           Add New Review
         </button>
-       
       </div>
       <Dialog
         open={openDialog}
@@ -254,7 +372,7 @@ const ReviewPage: React.FC = () => {
               onChange={(e) => {
                 if (Number(e.target.value) > 5) {
                   setNewReview({ ...newReview, rating: 5 });
-                }  else {
+                } else {
                   setNewReview({
                     ...newReview,
                     rating: Number(e.target.value),
@@ -278,7 +396,11 @@ const ReviewPage: React.FC = () => {
           </div>
         </DialogContent>
         <DialogActions>
-          <Button color="secondary" variant="contained" onClick={addNewReview}>
+          <Button
+            color="secondary"
+            variant="contained"
+            onClick={() => addNewReview(movie)}
+          >
             Add review
           </Button>
           <Button

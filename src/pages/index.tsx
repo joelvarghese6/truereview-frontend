@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import Head from "next/head";
+import returnkey from "@/components/env";
 //import { useDispatch, useSelector } from 'react-redux';
 //import { authAction } from '../store';
 
@@ -9,14 +10,14 @@ const HomePage = () => {
   // Example movie data for "New Movies in Theaters" and "New Movies on OTT"
   const newMoviesInTheaters = [
     {
-      id: 1,
+      id: "one",
       name: "Morbius",
       rating: 4.5,
       posterUrl:
         "https://e1.pxfuel.com/desktop-wallpaper/49/663/desktop-wallpaper-new-movie-posters-hollywood-movie-2022.jpg",
     },
     {
-      id: 2,
+      id: "two",
       name: "Fast X",
       rating: 4.2,
       posterUrl:
@@ -27,14 +28,14 @@ const HomePage = () => {
 
   const newMoviesOnOTT = [
     {
-      id: 3,
+      id: "three",
       name: "Kraven the Hunter",
       rating: 4.8,
       posterUrl:
         "https://www.joblo.com/wp-content/uploads/2022/05/kraven-the-hunter-poster-400x600.jpg",
     },
     {
-      id: 4,
+      id: "four",
       name: "Bhoot Police",
       rating: 4.0,
       posterUrl:

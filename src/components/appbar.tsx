@@ -10,12 +10,18 @@ import Tooltip from "@mui/material/Tooltip";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import Link from "next/link";
+import { Helius } from "helius-sdk";
+import { createTokenAccount, transferTokens } from "@/components/metaplex";
+import * as web3 from "@solana/web3.js";
+import returnkey from "./env";
+
+const helius = new Helius("0f31c860-68c3-4d89-bc63-a2f8957a0603");
 
 const pages = ["Products", "Pricing", "Blog"];
 const settings = ["Profile", "Logout"];
 
 function ResponsiveAppBar() {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
   console.log(connected);
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
     null
@@ -23,6 +29,7 @@ function ResponsiveAppBar() {
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
   );
+  const [amount, setAmount] = React.useState(0);
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -39,8 +46,54 @@ function ResponsiveAppBar() {
     setAnchorElUser(null);
   };
 
+  React.useEffect(() => {
+    if (!connected) {
+      return;
+    }
+
+    const url =
+      "https://devnet.helius-rpc.com/?api-key=0f31c860-68c3-4d89-bc63-a2f8957a0603";
+
+    async function getAmount() {
+      const connection = new web3.Connection(web3.clusterApiUrl("devnet"), {
+        commitment: "confirmed",
+      });
+
+      const mintaddr = "8UB2WSuBdRRRN4QzPPVTNFDph3cVLMPSA1Noe6SbnorC";
+      const mint = new web3.PublicKey(mintaddr);
+      const secret = returnkey();
+      const secretKey = Uint8Array.from(secret);
+      const user = web3.Keypair.fromSecretKey(secretKey);
+
+      const pubKey = new web3.PublicKey(publicKey!.toString());
+
+      const tokenAccount = await createTokenAccount(
+        connection,
+        user,
+        mint,
+        pubKey // Associating our address with the token account
+      );
+
+      const response = await fetch(url, {
+        method: "POST",
+        body: JSON.stringify({
+          id: "test-drive",
+          jsonrpc: "2.0",
+          method: "getTokenAccountBalance",
+          params: [tokenAccount.address],
+        }),
+      });
+      const data = await response.json();
+      const amounts = data.result.value.uiAmount;
+      console.log(amounts)
+      setAmount(amounts)
+    }
+
+    getAmount();
+  });
+
   return (
-    <AppBar position="static" style={{backgroundColor: "#464D77"}}>
+    <AppBar position="static" style={{ backgroundColor: "#464D77" }}>
       <Container maxWidth="xl">
         <Toolbar className="flex justify-between" disableGutters>
           <div>
@@ -64,6 +117,9 @@ function ResponsiveAppBar() {
             </Link>
           </div>
           <div className="flex">
+          <Box sx={{ flexGrow: 0, paddingRight: 8 }}>
+              {amount} Points
+            </Box>
             <Box sx={{ flexGrow: 0, paddingRight: 8 }}>
               <WalletMultiButton className="btn p-16" />
             </Box>
@@ -81,7 +137,7 @@ function ResponsiveAppBar() {
                 </Link>
               </Box>
             )}
-            </div>
+          </div>
         </Toolbar>
       </Container>
     </AppBar>
